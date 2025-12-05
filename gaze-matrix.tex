@@ -1,0 +1,489 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[margin=1in]{geometry}
+
+\title{The Gaze Matrix: Cinematic Censorship Heuristics as a Framework for AI Content Moderation}
+\author{} % TODO: Add author names here
+\date{}    % TODO: Add date if desired
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Current AI content moderation systems operate at unprecedented scale yet remain opaque, brittle, and normatively under-theorized. In parallel, over a century of cinematic censorship and classification has produced a rich, if deeply contested, set of practical heuristics for governing visual and narrative content. This paper argues that these cinematic traditions offer a useful design vocabulary for AI content moderation---provided they are appropriated critically rather than nostalgically.
+
+We introduce the \emph{Gaze Matrix}, a conceptual framework that maps different ``gazes'' involved in media governance (authorial, institutional, algorithmic, and audience) against key dimensions of content (depiction vs.\ endorsement, harm type, audience vulnerability, circulation, and affective framing). Drawing on the history of the Hays Code and contemporary rating systems, as well as film theory on the gaze, we reconstruct a set of \emph{cinematic censorship heuristics} such as ``depiction without celebration,'' ``consequences for transgression,'' and ``audience-gated explicitness.''
+
+We then operationalize these heuristics for AI systems as interpretable decision layers around machine-learned models, focusing on (1) policy design, (2) data labeling and training objectives, and (3) runtime moderation flows for generative and recommender systems. Through case sketches on self-harm, extremist propaganda, and sexuality, we show how the Gaze Matrix can help distinguish harmful advocacy from critical depiction, articulate graded responses rather than binary allow/ban decisions, and reveal whose values structure the system's ``gaze.'' Finally, we examine the historical harms of cinematic censorship---particularly its reinforcement of heteronormativity, racism, and patriarchy---to argue that any adoption of cinematic heuristics must be coupled with participatory governance, transparency, and fairness constraints. The result is not a nostalgic return to the Production Code, but a structured, criticizable grammar for designing accountable AI content moderation.
+\end{abstract}
+
+\section{Introduction}
+
+Digital platforms and AI systems now govern what billions of people can see, share, and say. From social networks to search engines to generative models, moderation is no longer a peripheral concern: it is central to information governance online. Yet moderation remains beset by familiar problems: scale, inconsistency, bias, and opacity. Even as regulators demand more transparency and accountability, the inner workings of algorithmic filters, blocklists, and reinforcement learning policies often remain obscure.
+
+In another domain, the film industry has iterated on content governance for nearly a century. The Motion Picture Production Code (the ``Hays Code'') and its successors, including the Motion Picture Association (MPA) rating system, developed elaborate mechanisms to decide which kinds of violence, sexuality, crime, and moral transgression may appear on screen---and to which audiences. These mechanisms are value-laden, frequently criticized, and historically exclusionary, but they are also explicit, heuristic, and deeply entangled with audience expectations and market dynamics.
+
+This paper asks: \textbf{What if we treated cinematic censorship heuristics as a design resource for AI content moderation?} Rather than copying the substantive moral rules, we mine their \emph{structure}: the ways they distinguish depiction from endorsement, gauge audience vulnerability, encode narrative consequences, and modulate explicitness across rating tiers.
+
+We draw also on film theory---particularly work on the cinematic gaze---to treat moderation as an arrangement of ``who gets to look at what, under whose rules, and from whose point of view.'' In content moderation, just as in cinema, gaze is about power as perspective: the power to define what is visible, how it is framed, and under which norms it is judged.
+
+Our contributions are threefold:
+\begin{enumerate}
+    \item \textbf{Historical and theoretical bridge.} We connect cinematic censorship regimes, film theory on the gaze, and contemporary AI content moderation practices, highlighting structural parallels and tensions.
+    \item \textbf{The Gaze Matrix.} We propose the Gaze Matrix as a schema for analyzing and designing moderation: a mapping between types of gaze (authorial, institutional, algorithmic, audience) and dimensions of content (representation, harm, vulnerability, circulation, affect).
+    \item \textbf{Cinematic heuristics for AI.} We derive a set of cinematic censorship heuristics and translate them into operational design patterns for AI moderation systems, illustrated via case sketches and accompanied by a critical discussion of their risks.
+\end{enumerate}
+
+We do not advocate importing the moral universe of mid-twentieth-century Hollywood into contemporary AI systems. Instead, we treat cinematic censorship as a historically rich testbed of governance ideas---useful precisely because their assumptions are now visible, criticizable, and in many cases discredited. That visibility can help make AI moderation more legible, contestable, and accountable.
+
+\section{Background}
+
+\subsection{Cinematic censorship and rating systems}
+
+The Motion Picture Production Code, commonly called the Hays Code, governed Hollywood content from the 1930s to the late 1960s as a regime of industry self-censorship designed to forestall government regulation. It enumerated specific prohibitions and constraints around sex, crime, religion, and ``morality,'' banning explicit nudity, ``excessive and lustful kissing,'' ridicule of religion, and sympathetic portrayals of crime. A few emblematic rules included:
+\begin{itemize}
+    \item ``Sympathy of the audience shall never be thrown to the side of crime, wrongdoing, evil or sin.''
+    \item ``Correct standards of life shall, as far as possible, be presented.''
+    \item ``Law, natural or human, shall not be ridiculed, nor shall sympathy be created for its violation.''
+\end{itemize}
+These rules were enforced by the Production Code Administration, which granted or withheld a Seal of Approval; without the seal, films faced distribution barriers.
+
+By the late 1960s, legal, cultural, and economic pressures made the Hays Code untenable. It was replaced by the MPA film rating system, which shifted from prescriptive moral rules to audience-based classification. Films are assigned ratings (G, PG, PG-13, R, NC-17) based on content involving violence, language, sexuality, and drug use, with the stated purpose of helping parents make informed choices rather than banning content outright. Trailers and promotional materials are also subject to tailored standards, indicating the reach of content governance across the distribution chain.
+
+Several features of these regimes are especially relevant for AI:
+\begin{itemize}
+    \item They distinguish \emph{depiction} from \emph{endorsement}: crime may be shown if punished or framed negatively.
+    \item They strategically gate audiences rather than implementing pure bans.
+    \item They use heuristic combinations of intensity, frequency, and context of content (for example, single strong profanity versus repeated, stylized violence versus realistic gore).
+    \item They have been consistently criticized for inconsistent, biased, and opaque decision-making, particularly toward independent films and marginalized representations.
+\end{itemize}
+These strengths and failures make cinematic systems a useful mirror for current AI moderation struggles over scale, bias, and accountability.
+
+\subsection{Gaze in film theory}
+
+Laura Mulvey's landmark essay ``Visual Pleasure and Narrative Cinema'' (1975) argued that classical Hollywood cinema organizes visual pleasure around a \emph{male gaze}: a structuring viewpoint that positions women as objects of erotic spectacle for presumed male spectators. This gaze is not just in-camera; it is embedded in:
+\begin{itemize}
+    \item camera work (framing, movement, close-ups on certain bodies),
+    \item narrative (whose desires drive the story),
+    \item spectatorship (how audiences are invited to identify with certain characters).
+\end{itemize}
+
+Subsequent scholarship has extended the concept toward multiple, intersecting gazes (racialized, colonial, queer, algorithmic), questioning who gets to look, who is looked at, and how images circulate.
+
+For our purposes, gaze is a way to think about power as perspective: the power to define what is visible, how it is framed, and under which norms it is judged. When AI systems moderate speech, images, or generated text, they embody and enforce particular gazes---even when those are not fully articulated.
+
+\subsection{AI content moderation today}
+
+AI is now central to moderating illegal and harmful content online, from terrorist propaganda to hate speech, self-harm, and child sexual abuse material. Automated tools are necessary simply to keep pace with the volume and speed of content production; no team of human reviewers can scale alone.
+
+However, AI moderation systems raise substantial concerns:
+\begin{itemize}
+    \item \textbf{Bias and discrimination.} Models trained on historical data may replicate or amplify existing social biases, over-policing some communities while under-policing others.
+    \item \textbf{Opacity.} Transparency has become a dominant governance strategy, but transparency alone often fails to yield accountability or contestability.
+    \item \textbf{Context loss.} Classifiers tend to focus on surface features (keywords, visual patterns) rather than narrative stance or intent. Critical discussion of extremist content may be treated the same as glorification; satire and reclaimed slurs are often misclassified.
+    \item \textbf{Ethical trade-offs.} Frameworks such as fairness, accountability, transparency, and ethics (FATE) articulate multiple principles, but operationalizing them in concrete system design remains difficult.
+\end{itemize}
+
+At the same time, regulators around the world are moving toward stricter oversight of harmful and synthetic media, including proposals for mandatory labeling of AI-generated content and clearer processes for content removal. Against this backdrop, cinematic censorship can serve as a historical laboratory of heuristics and missteps that can be translated---carefully---into the design of AI moderation.
+
+\section{The Gaze Matrix: From Screens to Systems}
+
+\subsection{Moderation as an arrangement of gazes}
+
+In both cinema and platforms, content governance is not the work of a single actor but of interacting gazes:
+\begin{itemize}
+    \item \textbf{Authorial gaze}: the creator's framing, intention, and representational choices.
+    \item \textbf{Institutional gaze}: censors, rating boards, trust and safety teams, and regulators interpreting norms.
+    \item \textbf{Algorithmic gaze}: models that detect, rank, block, or transform content.
+    \item \textbf{Audience gaze}: users who watch, report, amplify, reward, or withdraw.
+\end{itemize}
+
+In film, the Hays Code and MPA rating boards formalized the institutional gaze; critics like Mulvey dissected the authorial and spectator gazes. In platforms, these roles are distributed across policy teams, automated systems, content reviewers, and user reporting.
+
+The central idea of the Gaze Matrix is to treat AI moderation as the coordination of these gazes across multiple dimensions of content and harm, rather than as a single model making binary allow/ban decisions.
+
+\subsection{Dimensions of the matrix}
+
+We define five dimensions along which content can be evaluated:
+\begin{enumerate}[label=D\arabic*:]
+    \item \textbf{Representation mode (R): depiction vs.\ endorsement}
+    \begin{itemize}
+        \item \emph{Depiction}: content shows harmful acts (violence, hate, self-harm) but may criticize, problematize, or neutrally describe them.
+        \item \emph{Endorsement/advocacy}: content encourages, glamorizes, or instructs harmful acts.
+    \end{itemize}
+
+    \item \textbf{Harm type (H): what kind of harm is implicated}
+    \begin{itemize}
+        \item physical (violence, self-harm, terrorism),
+        \item psychological (bullying, harassment),
+        \item economic (fraud, scams),
+        \item informational (disinformation, privacy violations),
+        \item dignitary (hate speech, dehumanization).
+    \end{itemize}
+
+    \item \textbf{Audience vulnerability (A): who is likely to be harmed}
+    \begin{itemize}
+        \item children and teens,
+        \item general adult audiences,
+        \item specifically targeted or at-risk groups (for example, suicidal users, marginalized communities).
+    \end{itemize}
+
+    \item \textbf{Circulation and scale (C): how content moves}
+    \begin{itemize}
+        \item one-to-one vs.\ public,
+        \item low reach vs.\ viral,
+        \item ephemeral vs.\ archived and recommendable.
+    \end{itemize}
+
+    \item \textbf{Affective framing (F): emotional and moral stance}
+    \begin{itemize}
+        \item tone (celebratory, neutral, critical, ironic),
+        \item narrative outcomes (harm rewarded vs.\ punished; suffering glamorized vs.\ contextualized).
+    \end{itemize}
+\end{enumerate}
+
+These dimensions are not novel individually; many are implicit in existing platform policies. Our contribution is to make them explicitly combinatorial and to map them across multiple gazes.
+
+\subsection{The Gaze Matrix defined}
+
+We define the Gaze Matrix as a two-dimensional conceptual grid:
+\begin{itemize}
+    \item Rows: \emph{types of gaze}
+    \begin{itemize}
+        \item $G_1$: authorial gaze,
+        \item $G_2$: institutional gaze,
+        \item $G_3$: algorithmic gaze,
+        \item $G_4$: audience gaze.
+    \end{itemize}
+    \item Columns: \emph{content dimensions}
+    \begin{itemize}
+        \item $D_1$: representation mode (R),
+        \item $D_2$: harm type (H),
+        \item $D_3$: audience vulnerability (A),
+        \item $D_4$: circulation (C),
+        \item $D_5$: affective framing (F).
+    \end{itemize}
+\end{itemize}
+
+Each cell $(G_i, D_j)$ asks a specific question. For example:
+\begin{itemize}
+    \item $(G_2, D_1)$: How do institutional policies distinguish depiction from endorsement?
+    \item $(G_3, D_5)$: Can models reliably approximate affective stance (for example, praising vs.\ warning)?
+    \item $(G_4, D_3)$: How do audience reports vary by demographic or vulnerability?
+\end{itemize}
+
+The matrix is not a scoring sheet but a scaffold for:
+\begin{itemize}
+    \item designing heuristics (rules of thumb) that combine matrix cells,
+    \item locating where those heuristics are enforced (human policy, model logic, interface design),
+    \item surfacing where gaze asymmetries and biases appear.
+\end{itemize}
+
+In the next section, we draw on cinematic censorship to populate this matrix with practical heuristics.
+
+\section{Cinematic Censorship Heuristics}
+
+Cinematic censorship regimes developed numerous informal heuristics, even when codified rules were short. We derive seven such heuristics, then reinterpret them for AI moderation.
+
+\subsection*{H1: Depiction without celebration}
+
+\textbf{Cinematic form.} Under the Hays Code, crime could be shown but not glamorized; criminals had to face punishment, and sympathy was not to be thrown to the side of wrongdoing. Violence and vice were permissible when framed as cautionary or morally instructive.
+
+\textbf{AI translation.} In AI moderation terms, this maps to a stance classifier: distinguishing content that \emph{depicts} harmful acts from content that \emph{endorses or instructs} them. Examples:
+\begin{itemize}
+    \item Allow: documentary or critical analysis of extremist ideology.
+    \item Restrict or label: propaganda advocating that ideology.
+    \item Block: detailed how-to instructions for committing terrorism.
+\end{itemize}
+
+In the Gaze Matrix, H1 primarily links $(G_2, D_1)$ and $(G_3, D_1, D_5)$: policy articulates acceptable representational modes, and models approximate them via stance detection and narrative signals.
+
+\subsection*{H2: Consequences for transgression}
+
+\textbf{Cinematic form.} Censors often allowed transgressive acts if the narrative ultimately reaffirmed norms: the criminal is jailed, the adulterer punished, the bigot learns a lesson. The moral ``arc'' mattered as much as individual scenes.
+
+\textbf{AI translation.} For AI systems, H2 suggests that sequence and outcome matter. A generative model describing self-harm could either glamorize it or route users toward help and reasons not to act. A moderation pipeline might require that when harmful acts are mentioned, responses:
+\begin{itemize}
+    \item emphasize consequences and risks,
+    \item offer safer alternatives and resources,
+    \item avoid romanticizing or aestheticizing harm.
+\end{itemize}
+
+This lives at $(G_1, D_5)$ and $(G_3, D_5)$: training data and system prompts can bias generation toward consequence-aware responses.
+
+\subsection*{H3: Contextualization requirement}
+
+\textbf{Cinematic form.} Many rating boards have historically treated nudity, violence, or taboo topics as more acceptable in artistic, educational, or news contexts than in purely exploitative scenarios. Context---documentary vs.\ pornography, war film vs.\ gore spectacle---shapes classification.
+
+\textbf{AI translation.} For AI:
+\begin{itemize}
+    \item The same surface content (for example, a racial slur or gore) may be moderated differently if it appears in a historical discussion, a survivor testimony, or a satirical work.
+    \item Systems should encode content purpose: educational, news, art, personal narrative, promotional, incitement, and so on.
+\end{itemize}
+
+This requires richer labeling strategies and multi-task modeling (for example, topic plus purpose plus stance), linked to $(G_2, D_2, D_5)$ and $(G_3, D_2, D_5)$.
+
+\subsection*{H4: Audience gating rather than pure bans}
+
+\textbf{Cinematic form.} Rating systems shift the question from ``should anyone see this?'' to ``who can see this?'' A film with intense content may be suitable for adults but not children.
+
+\textbf{AI translation.} For AI and platforms, H4 encourages:
+\begin{itemize}
+    \item age-aware or role-aware access controls,
+    \item tiered responses (for example, youth accounts receive more constrained answers),
+    \item professional vs.\ general-public tools (for example, medical professionals vs.\ lay users).
+\end{itemize}
+
+This sits at $(G_2, D_3)$ and $(G_3, D_3, D_4)$. Instead of only allow/ban, systems can:
+\begin{itemize}
+    \item \emph{block}: for certain high-risk queries regardless of age (for example, child sexual abuse content),
+    \item \emph{gate}: allow only for verified experts or under strict logging,
+    \item \emph{redact or summarize}: lower-detail answers for general audiences, higher granularity in constrained contexts.
+\end{itemize}
+
+\subsection*{H5: Proportional explicitness}
+
+\textbf{Cinematic form.} Ratings often turn on intensity and frequency: one non-graphic violent act may be PG-13, repeated graphic gore may be R. Similarly, brief non-sexual nudity may be rated differently from extended sexualized scenes.
+
+\textbf{AI translation.} For generative models, H5 proposes graduated detail control:
+\begin{itemize}
+    \item At lower ``rating levels,'' models provide higher-level descriptions, avoid vivid sensory detail, and steer away from unnecessary graphicness.
+    \item At higher levels or in specialized contexts, they may offer more granular but still safety-bounded information.
+\end{itemize}
+
+This is especially relevant for violence, sexual content, and self-harm---mapping to $(G_3, D_2, D_5)$ and sometimes $(G_2, D_3)$.
+
+\subsection*{H6: Mixed-gaze accountability}
+
+\textbf{Cinematic form.} In film, censors, studios, directors, critics, and audiences all contest and reinterpret rules. Even under the Hays Code, directors creatively worked around restrictions, and audience reception shaped what was considered acceptable over time.
+
+\textbf{AI translation.} For AI moderation, H6 implies designing processes where:
+\begin{itemize}
+    \item policy teams, affected communities, external auditors, and users can contest and influence moderation heuristics,
+    \item human review complements automated decisions in edge cases (hybrid gaze),
+    \item appeals mechanisms and transparency reports make institutional and algorithmic gaze visible.
+\end{itemize}
+
+\subsection*{H7: Visible rule sets and descriptors}
+
+\textbf{Cinematic form.} Film ratings are accompanied by content descriptors (``strong language,'' ``sexual content,'' ``drug use''), giving audiences hints about why a rating was applied.
+
+\textbf{AI translation.} Analogously, H7 encourages AI systems to:
+\begin{itemize}
+    \item provide reason codes for moderation decisions (for example, ``blocked due to explicit self-harm instructions''),
+    \item offer structured descriptors users can inspect and critique,
+    \item support research access to de-identified decision logs for accountability.
+\end{itemize}
+
+In this view, the matrix becomes not just an internal design tool but part of what is disclosed to users and regulators.
+
+\section{Operationalizing the Gaze Matrix}
+
+\subsection{Policy design: from prose to matrix}
+
+Most platform policies are long prose documents. Translating them into a Gaze Matrix involves:
+\begin{enumerate}
+    \item \textbf{Extracting dimensions.} Identify where policies already rely on representation mode, harm type, audience, circulation, and affect.
+    \item \textbf{Annotating rule locations.} For each rule, mark which matrix cells it touches---for example, ``no praise or support for extremist organizations'' lives at $(G_2, D_1, D_2, D_5)$.
+    \item \textbf{Identifying gaps.} For instance, if there is no explicit guidance on audience vulnerability, $D_3$ may be under-specified.
+    \item \textbf{Aligning with cinematic heuristics.} Map H1--H7 to existing policy concepts and note where introducing them would clarify or refine rules.
+\end{enumerate}
+
+The outcome is an interpretable schema that can guide both human moderation decisions and the specification of model behaviors.
+
+\subsection{Data labeling and training}
+
+To teach models to approximate matrix-based heuristics, training data must encode more than ``allowed'' vs.\ ``blocked.'' For example:
+\begin{itemize}
+    \item labels for stance (depiction, neutral, endorsement, opposition),
+    \item labels for purpose (education, news, art, personal narrative, promotion, incitement),
+    \item labels for audience or intended-audience proxies,
+    \item labels for affective framing (celebratory, critical, tragic, comedic).
+\end{itemize}
+
+These labels can be built via:
+\begin{itemize}
+    \item expert annotation with guidelines explicitly referencing cinematic heuristics,
+    \item community-based annotation to surface multiple cultural perspectives,
+    \item active learning to focus labeling on hard-to-distinguish edge cases.
+\end{itemize}
+
+Models can then be trained to predict a vector of attributes, for example $[R, H, A, C, F]$, rather than a single risk score, enabling richer policy logic on top.
+
+\subsection{Runtime moderation flows}
+
+At runtime, content moderation systems can implement multi-stage flows:
+\begin{enumerate}
+    \item \textbf{Screening stage (algorithmic gaze).}
+    \begin{itemize}
+        \item Detect obvious illegality (for example, child sexual abuse material, explicit calls to violence) for immediate blocking.
+        \item Roughly classify harm type, stance, and explicitness.
+    \end{itemize}
+    \item \textbf{Heuristic stage (cinematic layer).}
+    \begin{itemize}
+        \item Apply rules such as:
+        \begin{itemize}
+            \item If $H$ includes self-harm and stance = endorsement $\rightarrow$ block and surface help resources.
+            \item If $H$ includes extremist ideology and stance = critical and purpose = academic $\rightarrow$ allow with friction (warnings).
+            \item If sexual content and user is marked as minor $\rightarrow$ block or highly constrain.
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{Escalation stage (institutional gaze).}
+    \begin{itemize}
+        \item Borderline or contested items escalate to human review.
+        \item Patterns of disagreement between model and human decisions feed back into training.
+    \end{itemize}
+    \item \textbf{Audience feedback stage (audience gaze).}
+    \begin{itemize}
+        \item Users may report, appeal, or opt into more/less restrictive settings within legal and safety bounds.
+    \end{itemize}
+\end{enumerate}
+
+The cinematic heuristics act as a semi-explainable bridge between abstract policy goals and numerical model outputs.
+
+\section{Case Sketches}
+
+\subsection{Self-harm narratives}
+
+Consider three texts:
+\begin{enumerate}
+    \item ``Here is exactly how to cut yourself deeply without being noticed.''
+    \item ``I have been struggling with suicidal thoughts for years; this is my story.''
+    \item ``If you are thinking of self-harm, please talk to someone you trust; here is why acting on it is not the answer.''
+\end{enumerate}
+
+Naive keyword-based moderation might flag all three equally. The Gaze Matrix helps distinguish them:
+\begin{itemize}
+    \item Harm type ($H$): all involve self-harm.
+    \item Representation mode ($R$) and affect ($F$):
+    \begin{itemize}
+        \item (1) instructional and endorsing,
+        \item (2) autobiographical and ambivalent,
+        \item (3) discouraging and supportive.
+    \end{itemize}
+\end{itemize}
+
+Heuristic application:
+\begin{itemize}
+    \item H1 (depiction vs.\ celebration) and H2 (consequences) suggest that (1) should be blocked and redirected to crisis resources.
+    \item (2) should be allowed but treated with care, for example allowed in supportive communities and accompanied by resource prompts.
+    \item (3) should be actively promoted in recovery-support contexts.
+\end{itemize}
+
+Here, cinematic thinking about narrative framing and consequences directly shapes differential moderation, rather than a flat ban on ``self-harm content.''
+
+\subsection{Extremist propaganda vs.\ documentation}
+
+Two pieces of content:
+\begin{enumerate}
+    \item A recruitment video glorifying an extremist group.
+    \item A human rights documentary analyzing the group's abuses, including some of the same footage.
+\end{enumerate}
+
+Both may contain similar imagery and keywords. The Gaze Matrix encourages focusing on:
+\begin{itemize}
+    \item purpose and stance ($R$, $F$),
+    \item audience ($A$),
+    \item circulation ($C$): where and how the content is recommended.
+\end{itemize}
+
+Heuristic application:
+\begin{itemize}
+    \item H1 (depiction without celebration) and H3 (contextualization) imply that (1) is blocked or highly restricted, with no recommendation.
+    \item (2) is allowed with friction (interstitial warnings, no algorithmic promotion in general-interest feeds, but accessible for research or education).
+\end{itemize}
+
+This mirrors the way some films with disturbing content are rated or accompanied by warnings rather than banned outright.
+
+\subsection{Sexuality and historical bias}
+
+Cinematic censorship has long treated queer relationships, interracial intimacy, and non-normative gender expressions as more censorable than comparable heterosexual content, reflecting prevailing prejudices rather than harm. The Hays Code explicitly banned ``sex perversion'' and miscegenation, contributing to distorted representation and erasure.
+
+AI systems risk repeating these patterns if:
+\begin{itemize}
+    \item training data encodes historic suppression,
+    \item policies are written in vague ``morality'' terms,
+    \item moderators over-police certain bodies and identities.
+\end{itemize}
+
+The Gaze Matrix here functions as a critical diagnostic tool:
+\begin{itemize}
+    \item Under $(G_2, D_2, D_3)$, we ask: Which sexualities and bodies are treated as harmful? For whom?
+    \item Under $(G_3, D_5)$, we examine whether models flag queer affection more often than straight affection at equivalent explicitness.
+\end{itemize}
+
+Combined with fairness analyses and participatory design, cinematic history becomes a warning: heuristics like H1--H5 must be anchored in harm and rights, not in preserving a particular moral order.
+
+\section{Critical Reflection: Learning from Censorship's Failures}
+
+While cinematic heuristics are structurally useful, their historical deployment produced significant harms:
+\begin{itemize}
+    \item \textbf{Paternalism and moralism.} The Hays Code presumed a singular standard of ``correct life'' and encoded conservative religious norms as universal.
+    \item \textbf{Erasure and stereotype.} Queer, interracial, and non-white characters were suppressed or caricatured; this shaped cultural imaginaries for generations.
+    \item \textbf{Opacity and unaccountable power.} Rating boards often operated as black boxes, accused of favoring major studios and penalizing independent films.
+\end{itemize}
+
+For AI, this history yields several guardrails:
+\begin{enumerate}
+    \item \textbf{Harm-based, not offense-based standards.} Moderation should prioritize measurable or well-supported harms (for example, violence, discrimination, exploitation) rather than protecting audiences from ``offense'' in the abstract.
+    \item \textbf{Plural gazes and participatory governance.} The institutional and algorithmic gaze must be informed by diverse communities, especially those historically marginalized by censorship. This includes structured consultation, community advisory boards, and feedback mechanisms.
+    \item \textbf{Auditable matrices.} Both policies and models should be testable against the Gaze Matrix, for example by measuring whether certain identities are disproportionately restricted for similar explicitness levels.
+    \item \textbf{Dynamic, revisable heuristics.} Just as film ratings evolved (for example, the introduction of PG-13, replacement of X with NC-17), AI moderation heuristics should be revisited regularly in light of empirical evidence and public debate.
+\end{enumerate}
+
+The point is not to celebrate censorship but to use its trajectory as a negative and positive example: a demonstration of both the power and danger of structured content governance.
+
+\section{Implications and Future Work}
+
+The Gaze Matrix and cinematic heuristics open several directions for research and practice:
+\begin{enumerate}
+    \item \textbf{Evaluation metrics.} Develop benchmark datasets and metrics that measure not only accuracy of harm detection but also correct stance classification (depiction vs.\ endorsement), fairness across identities and sexualities, and consistency across comparable scenarios.
+    \item \textbf{Tooling for policy teams.} Build internal tools that represent policies as matrices and allow policy authors to see coverage gaps and overlaps, and to simulate how changes propagate through model behaviors.
+    \item \textbf{User-facing transparency.} Explore interface designs that expose simplified versions of the Gaze Matrix to end users: why content was blocked or downranked, what harm dimension was implicated, and how to appeal or contribute feedback.
+    \item \textbf{Comparative governance.} Extend the framework beyond cinema, drawing on broadcasting, comics, and video game rating systems to test how different domain heuristics transfer into AI.
+    \item \textbf{Regulatory alignment.} As regulators increasingly focus on deepfakes, synthetic media labeling, and systematic transparency obligations, cinematic heuristics might inform how obligations are stratified by audience, context, and circulation rather than one-size-fits-all rules.
+\end{enumerate}
+
+\section{Conclusion}
+
+This paper has proposed the Gaze Matrix as a way to think about AI content moderation through the lens of cinematic censorship and film theory. By treating moderation as an arrangement of gazes across dimensions of representation, harm, audience, circulation, and affect, we can:
+\begin{itemize}
+    \item reuse cinematic heuristics---depiction vs.\ celebration, consequences for transgression, contextualization, audience gating, proportional explicitness---as design patterns for AI systems;
+    \item make moderation policies and model behaviors more interpretable and contestable, rather than purely statistical;
+    \item confront and correct the historical biases embedded in previous censorship regimes, using them as warnings rather than blueprints.
+\end{itemize}
+
+The Gaze Matrix does not resolve the fundamental normative questions of ``what should be allowed.'' Instead, it offers a structured grammar for asking and operationalizing those questions, turning opaque moderation into something closer to cinematic classification: visible, argued over, and amenable to public critique. In an era where AI systems organize the conditions of visibility for billions of people, such structured visibility into their governing logics is not a luxury---it is a democratic necessity.
+
+\begin{thebibliography}{99}
+
+\bibitem{hayscode}
+Motion Picture Producers and Distributors of America.
+\newblock \emph{The Motion Picture Production Code}.
+\newblock 1930 (revised 1934).
+
+\bibitem{mpa}
+Motion Picture Association.
+\newblock \emph{Film Ratings}.
+\newblock Available at \url{https://www.motionpictures.org/}.
+
+\bibitem{mulvey1975}
+Laura Mulvey.
+\newblock Visual pleasure and narrative cinema.
+\newblock \emph{Screen}, 16(3):6--18, 1975.
+
+\bibitem{gillespie2018}
+Tarleton Gillespie.
+\newblock \emph{Custodians of the Internet: Platforms, Content Moderation, and the Hidden Decisions That Shape Social Media}.
+\newblock Yale University Press, 2018.
+
+% TODO: Add further references on AI content moderation, transparency, and regulation.
+
+\end{thebibliography}
+
+\end{document}
